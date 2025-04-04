@@ -427,7 +427,22 @@ export default function ReportPage() {
                     </button>
                   </label>
                   {isMounted && (
-                    <div ref={mapContainer} className={styles.mapContainer} />
+                    <div className={styles.mapContainer}>
+                      <Map 
+                        onSelectLocation={(coords) => {
+                          setCoordinates(coords)
+                          // Reverse geocoding to get location name
+                          fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${coords[0]},${coords[1]}.json?access_token=${MAPBOX_TOKEN}`)
+                            .then(response => response.json())
+                            .then(data => {
+                              if (data.features && data.features.length > 0) {
+                                setLocation(data.features[0].place_name)
+                              }
+                            })
+                        }}
+                        initialCoordinates={coordinates}
+                      />
+                    </div>
                   )}
                   {location && (
                     <div className="form-text mt-2">
