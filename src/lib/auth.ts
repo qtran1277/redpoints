@@ -152,64 +152,38 @@ export const authOptions: NextAuthOptions = {
       return session
     },
     async signIn({ user, account, profile }) {
-      console.log('=== Sign In Attempt ===')
-      console.log('User:', { email: user.email, name: user.name })
-      console.log('Account:', { provider: account?.provider, type: account?.type })
-      console.log('Profile:', profile)
-
       if (!user.email) {
-        console.log('Sign in failed: No email provided')
-        return false
-      }
-
-      const email = typeof user.email === 'string' ? user.email : undefined
-      if (!email) {
-        console.log('Sign in failed: Invalid email format')
-        return false
+        console.log('No email provided');
+        return false;
       }
 
       try {
-        console.log('Starting database transaction')
-        const result = await prisma.$transaction(async (tx) => {
-          const existingUser = await tx.user.findUnique({
-            where: { email },
-            select: { id: true, isBlocked: true }
-          })
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+          where: {
+            email: user.email,
+          },
+        });
 
-          if (existingUser) {
-            console.log('Found existing user:', existingUser)
-            return existingUser
-          }
-
-          console.log('Creating new user with email:', email)
-          return await tx.user.create({
+        if (!existingUser) {
+          // Create new user
+          await prisma.user.create({
             data: {
-              email,
-              name: typeof user.name === 'string' ? user.name : undefined,
-              role: Role.DRIVER,
+              email: user.email,
+              name: user.name,
               points: 0,
-              isBlocked: false
+              role: Role.DRIVER,
             },
-            select: {
-              id: true,
-              isBlocked: true
-            }
-          })
-        }, {
-          maxWait: 5000,
-          timeout: 5000
-        })
-
-        if (result.isBlocked) {
-          console.log('Sign in blocked: User is blocked')
-          return false
+          });
+          console.log('Created new user:', user.email);
+        } else {
+          console.log('Found existing user:', existingUser.email);
         }
 
-        console.log('Sign in successful')
-        return true
+        return true;
       } catch (error) {
-        console.error('Database error during auth:', error)
-        return false
+        console.error('Database error during auth:', error);
+        return false;
       }
     }
   },
