@@ -38,8 +38,8 @@ function logTime(startTime: number, label: string) {
 }
 
 export const authOptions: NextAuthOptions = {
-  debug: true,
   adapter: PrismaAdapter(prisma),
+  debug: true,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -47,36 +47,8 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
-  events: {
-    async signIn({ user, account, profile }) {
-      console.log('=== Auth Event: Sign In ===')
-      console.log('User:', user)
-      console.log('Account:', account)
-      console.log('Profile:', profile)
-      console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
-    },
-    async signOut() {
-      // Clear NextAuth.js cookies
-      Cookies.remove('next-auth.session-token')
-      Cookies.remove('next-auth.csrf-token')
-      Cookies.remove('next-auth.callback-url')
-      Cookies.remove('__Secure-next-auth.session-token')
-      Cookies.remove('__Secure-next-auth.callback-url')
-      
-      // Clear Google OAuth state
-      Cookies.remove('g_state')
-      
-      // Force clear Google session
-      const googleLogoutUrl = 'https://accounts.google.com/logout'
-      try {
-        await fetch(googleLogoutUrl)
-      } catch (error) {
-        console.error('Error clearing Google session:', error)
-      }
-    }
-  },
   session: {
-    strategy: 'jwt',
+    strategy: 'database',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   cookies: {
@@ -90,104 +62,147 @@ export const authOptions: NextAuthOptions = {
       }
     },
     callbackUrl: {
-      name: `__Secure-next-auth.callback-url`,
+      name: 'next-auth.callback-url',
       options: {
-        httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: true
+        secure: process.env.NODE_ENV === 'production'
       }
     },
     csrfToken: {
-      name: `__Host-next-auth.csrf-token`,
+      name: 'next-auth.csrf-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: true
+        secure: process.env.NODE_ENV === 'production'
       }
-    },
-    pkceCodeVerifier: {
-      name: `__Secure-next-auth.pkce.code_verifier`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        maxAge: 900
-      }
-    },
-    state: {
-      name: `__Secure-next-auth.state`,
-      options: {
-        httpOnly: true,
-        sameSite: 'lax',
-        path: '/',
-        secure: true,
-        maxAge: 900
-      }
-    },
+    }
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      log('Starting signIn callback', { email: user.email })
+      
       if (!user.email) {
-        console.error('No email provided by Google')
+        log('No email provided')
         return false
       }
 
       try {
         // Check if user exists
-        const existingUser = await prisma.user.findUnique({
+        let dbUser = await prisma.user.findUnique({
           where: { email: user.email }
         })
 
-        if (!existingUser) {
-          // Create new user
-          await prisma.user.create({
+        if (!dbUser) {
+          // Create new user if doesn't exist
+          log('Creating new user', { email: user.email })
+          dbUser = await prisma.user.create({
             data: {
               email: user.email,
-              name: user.name,
+              name: user.name || user.email.split('@')[0],
               role: Role.DRIVER,
               points: 0
             }
           })
+          log('New user created successfully', { userId: dbUser.id })
+        }
+
+        // Link the Google account
+        if (account?.provider === 'google') {
+          log('Linking Google account')
+          try {
+            await prisma.account.upsert({
+              where: {
+                provider_providerAccountId: {
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                }
+              },
+              create: {
+                userId: dbUser.id,
+                type: account.type,
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              },
+              update: {
+                access_token: account.access_token,
+                expires_at: account.expires_at,
+                token_type: account.token_type,
+                scope: account.scope,
+                id_token: account.id_token,
+              }
+            })
+            log('Google account linked successfully')
+            return true
+          } catch (error) {
+            log('Error linking Google account', { error })
+            return false
+          }
         }
 
         return true
       } catch (error) {
-        console.error('Error in signIn callback:', error)
+        log('Error in signIn callback', { error })
         return false
       }
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      log('JWT Callback', { token, userId: user?.id })
+      
       if (user) {
-        token.role = user.role;
-        token.id = user.id;
+        token.id = user.id
+        token.email = user.email
       }
-      return token;
+      
+      if (account) {
+        token.accessToken = account.access_token
+      }
+
+      return token
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
+      log('Session Callback', { sessionUser: session.user, token })
+
+      if (token?.id && token?.email) {
         try {
           const user = await prisma.user.findUnique({
-            where: { id: token.sub }
+            where: { email: token.email }
           })
 
           if (user) {
             session.user.id = user.id
             session.user.role = user.role
             session.user.points = user.points
+            log('Session updated with user data', { userId: user.id, role: user.role })
           }
         } catch (error) {
-          console.error('Error in session callback:', error)
+          log('Error in session callback', { error })
         }
       }
+
       return session
-    },
+    }
   },
   pages: {
-    signIn: '/login',
-    signOut: '/login',
+    signIn: '/auth/signin',
+    signOut: '/auth/signin',
     error: '/auth/error'
+  },
+  events: {
+    async signIn({ user, account, profile }) {
+      log('Sign in event', { userId: user.id, email: user.email })
+    },
+    async signOut({ session, token }) {
+      log('Sign out event', { userId: session?.user?.id })
+    },
+    async session({ session, token }) {
+      log('Session event', { userId: session?.user?.id })
+    }
   }
 } 
