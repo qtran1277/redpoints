@@ -244,7 +244,7 @@ export default function BootstrapReportPage() {
                         </Badge>
                       </div>
                       <div className="d-flex justify-content-between align-items-center">
-                        <Badge bg="info" className="d-flex align-items-center gap-1">
+                        <div className="d-flex align-items-center gap-1">
                           {report.reportType.icon ? (
                             (() => {
                               const [iconName, iconColor] = report.reportType.icon.split(':')
@@ -261,8 +261,8 @@ export default function BootstrapReportPage() {
                           ) : (
                             <AlertTriangle size={14} className="text-warning" />
                           )}
-                          {report.reportType.name}
-                        </Badge>
+                          <span>{report.reportType.name}</span>
+                        </div>
                       </div>
                     </Card.Body>
                   </Card>

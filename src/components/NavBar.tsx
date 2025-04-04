@@ -54,13 +54,6 @@ export default function NavBar() {
                     </Link>
                   </li>
                 )}
-                {session?.user?.role === 'DRIVER' && (
-                  <li className="nav-item">
-                    <Link href="/report/bootstrap" className="nav-link">
-                      Báo cáo của tôi
-                    </Link>
-                  </li>
-                )}
                 {session?.user && (
                   <>
                     <li className="nav-item">
