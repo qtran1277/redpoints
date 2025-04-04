@@ -2,13 +2,15 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { Toaster } from 'react-hot-toast'
 import NavBar from '@/components/NavBar'
 import Providers from '@/components/Providers'
-import 'bootstrap/dist/css/bootstrap.min.css'
+import Script from 'next/script'
+
+// Import styles
+import 'mapbox-gl/dist/mapbox-gl.css'
+import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap-icons/font/bootstrap-icons.css'
 import './globals.css'
-import Script from 'next/script'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -27,12 +29,12 @@ export default async function RootLayout({
   return (
     <html lang="vi">
       <head>
-        <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" />
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+        <Script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" strategy="afterInteractive" />
       </head>
       <body className={inter.className}>
         <Providers session={session}>
           <NavBar />
-          <Toaster position="top-right" />
           {children}
         </Providers>
       </body>

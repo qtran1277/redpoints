@@ -3,6 +3,7 @@ import GoogleProvider from 'next-auth/providers/google'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import prisma from '@/lib/prisma'
 import { Role } from '@prisma/client'
+import Cookies from 'js-cookie'
 
 // Log environment variables
 console.log('=== Environment Variables ===')
@@ -41,21 +42,37 @@ export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
   secret: process.env.NEXTAUTH_SECRET,
   events: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       console.log('=== Auth Event: Sign In ===')
-      console.log('Provider:', account?.provider)
-      console.log('User email:', user.email)
+      console.log('User:', user)
+      console.log('Account:', account)
+      console.log('Profile:', profile)
       console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
     },
-    async signOut({ session }) {
-      console.log('=== Auth Event: Sign Out ===')
-      console.log('User email:', session?.user?.email)
+    async signOut() {
+      // Clear NextAuth.js cookies
+      Cookies.remove('next-auth.session-token')
+      Cookies.remove('next-auth.csrf-token')
+      Cookies.remove('next-auth.callback-url')
+      Cookies.remove('__Secure-next-auth.session-token')
+      Cookies.remove('__Secure-next-auth.callback-url')
+      
+      // Clear Google OAuth state
+      Cookies.remove('g_state')
+      
+      // Force clear Google session
+      const googleLogoutUrl = 'https://accounts.google.com/logout'
+      try {
+        await fetch(googleLogoutUrl)
+      } catch (error) {
+        console.error('Error clearing Google session:', error)
+      }
     }
   },
   session: {
@@ -114,30 +131,32 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account, profile }) {
       if (!user.email) {
-        console.log('No email provided');
-        return false;
+        console.error('No email provided by Google')
+        return false
       }
 
       try {
-        // Check if user exists and create if not - using upsert for single operation
-        const upsertUser = await prisma.user.upsert({
-          where: {
-            email: user.email as string,
-          },
-          update: {}, // No updates if exists
-          create: {
-            email: user.email as string,
-            name: typeof user.name === 'string' ? user.name : '',
-            points: 0,
-            role: Role.DRIVER,
-          },
-        });
-        
-        console.log(upsertUser.id ? 'Updated existing user:' : 'Created new user:', user.email);
-        return true;
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email }
+        })
+
+        if (!existingUser) {
+          // Create new user
+          await prisma.user.create({
+            data: {
+              email: user.email,
+              name: user.name,
+              role: Role.DRIVER,
+              points: 0
+            }
+          })
+        }
+
+        return true
       } catch (error) {
-        console.error('Database error during auth:', error);
-        return false;
+        console.error('Error in signIn callback:', error)
+        return false
       }
     },
     async jwt({ token, user }) {
@@ -148,15 +167,27 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role as Role;
-        session.user.id = token.id as string;
+      if (session.user && token.sub) {
+        try {
+          const user = await prisma.user.findUnique({
+            where: { id: token.sub }
+          })
+
+          if (user) {
+            session.user.id = user.id
+            session.user.role = user.role
+            session.user.points = user.points
+          }
+        } catch (error) {
+          console.error('Error in session callback:', error)
+        }
       }
-      return session;
+      return session
     },
   },
   pages: {
-    signIn: '/auth/signin',
+    signIn: '/login',
+    signOut: '/login',
     error: '/auth/error'
   }
 } 

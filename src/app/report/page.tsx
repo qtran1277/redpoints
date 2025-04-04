@@ -5,13 +5,19 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import styles from './page.module.css'
 import { toast } from 'react-hot-toast'
 import { Spinner } from 'react-bootstrap'
 import { components } from 'react-select'
 import Map from '@/components/Map'
 import Select from 'react-select'
 
-mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
+// Ensure Mapbox token is set
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+if (!MAPBOX_TOKEN) {
+  console.error('NEXT_PUBLIC_MAPBOX_TOKEN is not set')
+}
+mapboxgl.accessToken = MAPBOX_TOKEN || ''
 
 interface ReportType {
   id: string
@@ -32,10 +38,17 @@ export default function ReportPage() {
   const [selectedReportType, setSelectedReportType] = useState<string>('')
   const [isLoadingLocation, setIsLoadingLocation] = useState(false)
   const [isLoadingReportTypes, setIsLoadingReportTypes] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
 
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const marker = useRef<mapboxgl.Marker | null>(null)
+
+  // Set mounted state
+  useEffect(() => {
+    setIsMounted(true)
+    return () => setIsMounted(false)
+  }, [])
 
   useEffect(() => {
     const fetchReportTypes = async () => {
@@ -93,22 +106,41 @@ export default function ReportPage() {
     checkUserStatus()
   }, [status, session, router])
 
-  // Initialize map when modal opens
+  // Initialize map when component mounts
   useEffect(() => {
-    const modal = document.getElementById('mapModal')
-    if (!modal) return
+    // Add a small delay to ensure container is rendered
+    const timer = setTimeout(() => {
+      console.log('Map container ref:', mapContainer.current)
 
-    const initializeMap = () => {
-      if (!map.current && mapContainer.current) {
+      if (!mapContainer.current) {
+        console.error('Map container not found')
+        return
+      }
+
+      if (map.current) {
+        console.log('Map already initialized')
+        return
+      }
+
+      if (!MAPBOX_TOKEN) {
+        console.error('Mapbox token not found')
+        toast.error('Lỗi khởi tạo bản đồ: Token không hợp lệ')
+        return
+      }
+
+      try {
+        console.log('Initializing map...')
+        
+        // Initialize map
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: 'mapbox://styles/mapbox/streets-v12',
           center: [105.8342, 21.0278], // Hanoi coordinates
-          zoom: 12
+          zoom: 12,
         })
 
         // Add navigation control
-        map.current.addControl(new mapboxgl.NavigationControl())
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right')
 
         // Add geolocate control
         map.current.addControl(
@@ -117,7 +149,8 @@ export default function ReportPage() {
               enableHighAccuracy: true
             },
             trackUserLocation: true
-          })
+          }),
+          'top-right'
         )
 
         // Add click handler
@@ -128,7 +161,9 @@ export default function ReportPage() {
           if (marker.current) {
             marker.current.setLngLat([lng, lat])
           } else {
-            marker.current = new mapboxgl.Marker()
+            marker.current = new mapboxgl.Marker({
+              color: '#FF0000'
+            })
               .setLngLat([lng, lat])
               .addTo(map.current!)
           }
@@ -143,25 +178,46 @@ export default function ReportPage() {
               }
             })
         })
+
+        // Handle map load event
+        map.current.on('load', () => {
+          console.log('Map loaded successfully')
+          map.current?.resize()
+        })
+
+        // Handle map error event
+        map.current.on('error', (e) => {
+          console.error('Map error:', e)
+          toast.error('Lỗi khởi tạo bản đồ')
+        })
+
+      } catch (error) {
+        console.error('Error initializing map:', error)
+        toast.error('Lỗi khởi tạo bản đồ')
       }
+    }, 100) // Small delay to ensure container is mounted
 
-      // Force map resize when modal is shown
-      setTimeout(() => {
-        if (map.current) {
-          map.current.resize()
-        }
-      }, 100)
-    }
-
-    modal.addEventListener('shown.bs.modal', initializeMap)
+    // Cleanup
     return () => {
-      modal.removeEventListener('shown.bs.modal', initializeMap)
+      clearTimeout(timer)
       if (map.current) {
         map.current.remove()
         map.current = null
       }
     }
   }, [])
+
+  // Force map resize when container size changes
+  useEffect(() => {
+    if (!map.current) return;
+
+    const resizeMap = () => {
+      map.current?.resize();
+    };
+
+    window.addEventListener('resize', resizeMap);
+    return () => window.removeEventListener('resize', resizeMap);
+  }, []);
 
   const getCurrentLocation = () => {
     setIsLoadingLocation(true)
@@ -349,7 +405,7 @@ export default function ReportPage() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label d-flex justify-content-between align-items-center">
+                  <label className="form-label d-flex justify-content-between align-items-center mb-3">
                     <span>Vị trí</span>
                     <button 
                       type="button" 
@@ -370,9 +426,11 @@ export default function ReportPage() {
                       )}
                     </button>
                   </label>
-                  <div ref={mapContainer} className="border rounded" style={{ height: '400px' }} />
+                  {isMounted && (
+                    <div ref={mapContainer} className={styles.mapContainer} />
+                  )}
                   {location && (
-                    <div className="form-text">
+                    <div className="form-text mt-2">
                       Đã chọn vị trí: {location}
                     </div>
                   )}

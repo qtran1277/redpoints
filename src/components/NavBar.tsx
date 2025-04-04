@@ -1,10 +1,21 @@
 'use client'
 
 import { useSession, signOut } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 export default function NavBar() {
   const { data: session } = useSession()
+  const router = useRouter()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut({ redirect: false })
+      router.push('/auth/signin')
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
 
   return (
     <nav className="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
@@ -62,7 +73,7 @@ export default function NavBar() {
                   <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                     <li>
                       <button 
-                        onClick={() => signOut()} 
+                        onClick={handleSignOut} 
                         className="dropdown-item text-danger"
                       >
                         Đăng xuất
