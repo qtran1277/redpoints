@@ -12,7 +12,7 @@ export const Fade = React.forwardRef<HTMLDivElement, FadeProps>(
   ({ className, in: inProp = false, duration = 200, delay = 0, unmountOnExit = false, children, ...props }, ref) => {
     const [mounted, setMounted] = React.useState<boolean>(false)
     const [visible, setVisible] = React.useState<boolean>(false)
-    const timeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+    const timeoutRef = React.useRef<NodeJS.Timeout>()
 
     React.useEffect(() => {
       if (inProp) {
@@ -79,7 +79,7 @@ export const Slide = React.forwardRef<HTMLDivElement, SlideProps>(
   }, ref) => {
     const [mounted, setMounted] = React.useState<boolean>(false)
     const [visible, setVisible] = React.useState<boolean>(false)
-    const timeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+    const timeoutRef = React.useRef<NodeJS.Timeout>()
 
     const getTransform = (visible: boolean) => {
       if (!visible) {
@@ -151,7 +151,7 @@ export const Scale = React.forwardRef<HTMLDivElement, ScaleProps>(
   ({ className, in: inProp = false, duration = 200, delay = 0, unmountOnExit = false, children, ...props }, ref) => {
     const [mounted, setMounted] = React.useState<boolean>(false)
     const [visible, setVisible] = React.useState<boolean>(false)
-    const timeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+    const timeoutRef = React.useRef<NodeJS.Timeout>()
 
     React.useEffect(() => {
       if (inProp) {
@@ -207,7 +207,7 @@ export const Collapse = React.forwardRef<HTMLDivElement, CollapseProps>(
   ({ className, in: inProp = false, duration = 200, delay = 0, unmountOnExit = false, children, ...props }, ref) => {
     const [mounted, setMounted] = React.useState<boolean>(false)
     const [visible, setVisible] = React.useState<boolean>(false)
-    const timeoutRef = React.useRef<NodeJS.Timeout | undefined>(undefined)
+    const timeoutRef = React.useRef<NodeJS.Timeout>()
     const contentRef = React.useRef<HTMLDivElement>(null)
 
     React.useEffect(() => {
@@ -237,17 +237,18 @@ export const Collapse = React.forwardRef<HTMLDivElement, CollapseProps>(
     return (
       <div
         ref={ref}
-        className={cn(className)}
+        className={cn('overflow-hidden', className)}
         style={{
           height: visible ? contentRef.current?.scrollHeight : 0,
           opacity: visible ? 1 : 0,
-          overflow: 'hidden',
           transition: `height ${duration}ms ease-in-out, opacity ${duration}ms ease-in-out`,
           transitionDelay: `${delay}ms`,
         }}
         {...props}
       >
-        <div ref={contentRef}>{children}</div>
+        <div ref={contentRef}>
+          {children}
+        </div>
       </div>
     )
   }

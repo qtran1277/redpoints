@@ -54,11 +54,27 @@ export default function NavBar() {
                     </Link>
                   </li>
                 )}
-                <li className="nav-item">
-                  <Link href="/report" className="nav-link">
-                    Báo cáo mới
-                  </Link>
-                </li>
+                {session?.user?.role === 'DRIVER' && (
+                  <li className="nav-item">
+                    <Link href="/report/bootstrap" className="nav-link">
+                      Báo cáo của tôi
+                    </Link>
+                  </li>
+                )}
+                {session?.user && (
+                  <>
+                    <li className="nav-item">
+                      <Link href="/report/bootstrap" className="nav-link">
+                        Báo cáo của tôi
+                      </Link>
+                    </li>
+                    <li className="nav-item">
+                      <Link href="/report/new" className="nav-link">
+                        Báo cáo mới
+                      </Link>
+                    </li>
+                  </>
+                )}
                 <li className="nav-item dropdown">
                   <a 
                     className="nav-link dropdown-toggle" 

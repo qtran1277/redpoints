@@ -6,19 +6,15 @@ import {
   Progress,
   Skeleton,
   Spinner,
+  Checkbox,
+  Radio,
+  Switch,
+  Toggle,
   Button,
   Input,
   Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-  CardFooter,
   Badge,
   Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
 } from '@/components/ui'
 
 export default function DemoPage() {
@@ -62,18 +58,46 @@ export default function DemoPage() {
         </div>
 
         <div className="space-y-4">
-          <Skeleton className="w-full h-8" />
-          <Skeleton className="w-16 h-16 rounded-full" />
-          <Skeleton className="w-full h-32" />
+          <Skeleton variant="text" width="100%" height="2rem" />
+          <Skeleton variant="circular" width="4rem" height="4rem" />
+          <Skeleton variant="rectangular" width="100%" height="8rem" />
         </div>
 
         <div className="flex gap-4">
-          <Spinner className="w-4 h-4" />
-          <Spinner className="w-6 h-6" />
-          <Spinner className="w-8 h-8" />
-          <Spinner className="w-6 h-6 text-green-500" />
-          <Spinner className="w-6 h-6 text-yellow-500" />
-          <Spinner className="w-6 h-6 text-red-500" />
+          <Spinner size="sm" />
+          <Spinner size="md" />
+          <Spinner size="lg" />
+          <Spinner variant="success" />
+          <Spinner variant="warning" />
+          <Spinner variant="error" />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-2xl font-semibold">Data Input Components</h2>
+        
+        <div className="space-y-4">
+          <Checkbox label="Checkbox 1" />
+          <Checkbox label="Checkbox 2" error="This is an error message" />
+          <Checkbox label="Checkbox 3" helperText="This is a helper text" />
+        </div>
+
+        <div className="space-y-4">
+          <Radio label="Radio 1" name="radio-group" />
+          <Radio label="Radio 2" name="radio-group" error="This is an error message" />
+          <Radio label="Radio 3" name="radio-group" helperText="This is a helper text" />
+        </div>
+
+        <div className="space-y-4">
+          <Switch label="Switch 1" />
+          <Switch label="Switch 2" error="This is an error message" />
+          <Switch label="Switch 3" helperText="This is a helper text" />
+        </div>
+
+        <div className="space-y-4">
+          <Toggle label="Toggle 1" />
+          <Toggle label="Toggle 2" active />
+          <Toggle label="Toggle 3" error="This is an error message" />
         </div>
       </section>
 
@@ -89,23 +113,22 @@ export default function DemoPage() {
 
         <div className="space-y-4">
           <Input placeholder="Default Input" />
-          <Input placeholder="Error Input" className="border-red-500" />
-          <Input placeholder="Helper Text Input" />
-          <div className="text-sm text-gray-500">This is a helper text</div>
+          <Input placeholder="Error Input" error="This is an error message" />
+          <Input placeholder="Helper Text Input" helperText="This is a helper text" />
         </div>
 
         <div className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Card Title</CardTitle>
-              <CardDescription>Card Description</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <Card.Header>
+              <Card.Title>Card Title</Card.Title>
+              <Card.Description>Card Description</Card.Description>
+            </Card.Header>
+            <Card.Content>
               <p>Card Content</p>
-            </CardContent>
-            <CardFooter>
+            </Card.Content>
+            <Card.Footer>
               <p>Card Footer</p>
-            </CardFooter>
+            </Card.Footer>
           </Card>
         </div>
 
@@ -118,14 +141,14 @@ export default function DemoPage() {
 
         <div className="space-y-4">
           <Tabs defaultValue="tab1">
-            <TabsList>
-              <TabsTrigger value="tab1">Tab 1</TabsTrigger>
-              <TabsTrigger value="tab2">Tab 2</TabsTrigger>
-              <TabsTrigger value="tab3">Tab 3</TabsTrigger>
-            </TabsList>
-            <TabsContent value="tab1">Tab 1 Content</TabsContent>
-            <TabsContent value="tab2">Tab 2 Content</TabsContent>
-            <TabsContent value="tab3">Tab 3 Content</TabsContent>
+            <Tabs.List>
+              <Tabs.Trigger value="tab1">Tab 1</Tabs.Trigger>
+              <Tabs.Trigger value="tab2">Tab 2</Tabs.Trigger>
+              <Tabs.Trigger value="tab3">Tab 3</Tabs.Trigger>
+            </Tabs.List>
+            <Tabs.Content value="tab1">Tab 1 Content</Tabs.Content>
+            <Tabs.Content value="tab2">Tab 2 Content</Tabs.Content>
+            <Tabs.Content value="tab3">Tab 3 Content</Tabs.Content>
           </Tabs>
         </div>
       </section>

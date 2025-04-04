@@ -1,13 +1,9 @@
-import * as React from 'react'
 import { ButtonHTMLAttributes, forwardRef } from 'react'
 import { cn } from '@/utils/cn'
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'link'
-type ButtonSize = 'sm' | 'md' | 'lg'
-
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: ButtonVariant
-  size?: ButtonSize
+export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link'
+  size?: 'sm' | 'md' | 'lg'
   isLoading?: boolean
 }
 
@@ -47,15 +43,15 @@ Button.displayName = 'Button'
 export interface ButtonGroupProps {
   children: React.ReactNode
   className?: string
-  size?: ButtonSize
-  variant?: ButtonVariant
+  size?: 'default' | 'sm' | 'lg'
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
 }
 
 export const ButtonGroup = ({
   children,
   className,
-  size = 'md',
-  variant = 'primary',
+  size = 'default',
+  variant = 'default',
 }: ButtonGroupProps) => {
   return (
     <div
@@ -84,10 +80,15 @@ export const ButtonGroup = ({
   )
 }
 
-export interface IconButtonProps extends ButtonProps {}
+export interface IconButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  size?: 'default' | 'sm' | 'lg'
+  isLoading?: boolean
+}
 
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
-  ({ className, variant = 'primary', size = 'md', isLoading, children, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', isLoading, children, ...props }, ref) => {
     return (
       <Button
         ref={ref}
@@ -104,12 +105,15 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
 )
 IconButton.displayName = 'IconButton'
 
-export interface LoadingButtonProps extends ButtonProps {
+export interface LoadingButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link'
+  size?: 'default' | 'sm' | 'lg' | 'icon'
   loadingText?: string
 }
 
 export const LoadingButton = React.forwardRef<HTMLButtonElement, LoadingButtonProps>(
-  ({ className, variant = 'primary', size = 'md', loadingText, children, ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', loadingText, children, ...props }, ref) => {
     const [isLoading, setIsLoading] = React.useState(false)
 
     const handleClick = async (event: React.MouseEvent<HTMLButtonElement>) => {
