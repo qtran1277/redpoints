@@ -1,6 +1,22 @@
-export type Role = 'DRIVER' | 'MODERATOR' | 'ADMIN'
-export type ReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-export type ReportCategory = 'ACCIDENT_PRONE' | 'TRAFFIC_VIOLATION' | 'ROAD_CONDITION' | 'POLICE_CHECKPOINT' | 'OTHER'
+export enum Role {
+  DRIVER = 'DRIVER',
+  MODERATOR = 'MODERATOR',
+  ADMIN = 'ADMIN'
+}
+
+export enum ReportStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
+
+export enum ReportCategory {
+  ACCIDENT_PRONE = 'ACCIDENT_PRONE',
+  TRAFFIC_VIOLATION = 'TRAFFIC_VIOLATION',
+  ROAD_CONDITION = 'ROAD_CONDITION',
+  POLICE_CHECKPOINT = 'POLICE_CHECKPOINT',
+  OTHER = 'OTHER'
+}
 
 export interface User {
   id: string
@@ -41,8 +57,11 @@ export interface Report {
   }
 }
 
-export enum ReportStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+export interface ReportType {
+  id: string
+  name: string
+  description: string
+  icon: string
+  createdAt: Date
+  updatedAt: Date
 } 
