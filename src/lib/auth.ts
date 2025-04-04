@@ -1,6 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
 import GoogleProvider from 'next-auth/providers/google'
-import GithubProvider from 'next-auth/providers/github'
+import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import prisma from '@/lib/prisma'
 import { Role } from '@prisma/client'
 
@@ -37,17 +37,14 @@ function logTime(startTime: number, label: string) {
 }
 
 export const authOptions: NextAuthOptions = {
+  debug: true,
+  adapter: PrismaAdapter(prisma),
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-    GithubProvider({
-      clientId: process.env.GITHUB_ID!,
-      clientSecret: process.env.GITHUB_SECRET!,
+      clientId: process.env.GOOGLE_CLIENT_ID ?? '',
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
     }),
   ],
-  debug: true,
   secret: process.env.NEXTAUTH_SECRET,
   events: {
     async signIn({ user, account }) {
@@ -158,29 +155,32 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
-        // Check if user exists
-        const existingUser = await prisma.user.findUnique({
-          where: {
-            email: user.email,
-          },
-        });
+        // Set timeout for database operations
+        const timeoutPromise = new Promise<boolean>((_, reject) => 
+          setTimeout(() => reject(new Error('Database timeout')), 8000)
+        );
 
-        if (!existingUser) {
-          // Create new user
-          await prisma.user.create({
-            data: {
-              email: user.email,
-              name: user.name,
+        const dbOperation = async () => {
+          // Check if user exists and create if not - using upsert for single operation
+          const upsertUser = await prisma.user.upsert({
+            where: {
+              email: user.email as string,
+            },
+            update: {}, // No updates if exists
+            create: {
+              email: user.email as string,
+              name: typeof user.name === 'string' ? user.name : '',
               points: 0,
               role: Role.DRIVER,
             },
           });
-          console.log('Created new user:', user.email);
-        } else {
-          console.log('Found existing user:', existingUser.email);
-        }
+          
+          console.log(upsertUser.id ? 'Updated existing user:' : 'Created new user:', user.email);
+          return true;
+        };
 
-        return true;
+        // Race between timeout and db operation
+        return await Promise.race([dbOperation(), timeoutPromise]);
       } catch (error) {
         console.error('Database error during auth:', error);
         return false;
@@ -189,6 +189,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/signin',
-    error: '/auth/signin'
+    error: '/auth/error'
   }
 } 
