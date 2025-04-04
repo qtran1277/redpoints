@@ -11,7 +11,10 @@ export async function PUT(request: Request, { params }: any) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { reason } = await request.json()
+    // Check if user is moderator
+    if (session.user.role !== 'MODERATOR') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const report = await prisma.report.findUnique({
       where: { id },
@@ -36,17 +39,24 @@ export async function PUT(request: Request, { params }: any) {
       data: {
         status: action === 'approve' ? 'APPROVED' : 'REJECTED',
         moderatorId: session.user.id,
-        rejectionReason: reason || null,
       },
+      include: {
+        reportType: {
+          select: {
+            id: true,
+            name: true,
+            icon: true
+          }
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
     })
-
-    if (action === 'approve') {
-      // Since there's no Post model, we'll remove this part
-      // await prisma.post.update({
-      //   where: { id: report.postId },
-      //   data: { status: 'removed' },
-      // });
-    }
 
     return NextResponse.json(updatedReport)
   } catch (error) {
