@@ -11,11 +11,36 @@ import { Button } from '@/components/ui/button'
 import { MapPin, Calendar, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react'
 import Link from 'next/link'
 
+type ReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
 // Map status to Vietnamese
-const statusMap = {
-  PENDING: { label: 'Chờ duyệt', color: 'bg-yellow-500', icon: Clock },
+const statusConfig = {
+  PENDING: { label: 'Đang chờ', color: 'bg-yellow-500', icon: Clock },
   APPROVED: { label: 'Đã duyệt', color: 'bg-green-500', icon: CheckCircle },
   REJECTED: { label: 'Từ chối', color: 'bg-red-500', icon: XCircle },
+} as const;
+
+interface Report {
+  id: string;
+  title: string;
+  description: string;
+  status: ReportStatus;
+  createdAt: Date;
+  latitude: number;
+  longitude: number;
+  address?: string | null;
+  city?: string | null;
+  district?: string | null;
+  rejectionReason?: string | null;
+  reportType: {
+    id: string;
+    name: string;
+    icon: string;
+  };
+}
+
+interface ReportCardProps {
+  report: Report;
 }
 
 export default async function DriverDashboard() {
@@ -32,15 +57,21 @@ export default async function DriverDashboard() {
   // Fetch reports for the current driver
   const reports = await prisma.report.findMany({
     where: {
-      driverId: session.user.id
+      userId: session.user.id
+    },
+    include: {
+      reportType: {
+        select: {
+          id: true,
+          name: true,
+          icon: true
+        }
+      }
     },
     orderBy: {
       createdAt: 'desc'
-    },
-    include: {
-      location: true
     }
-  })
+  }) as Report[]
 
   // Group reports by status
   const reportsByStatus = {
@@ -125,39 +156,46 @@ export default async function DriverDashboard() {
   )
 }
 
-function ReportCard({ report }) {
-  const StatusIcon = statusMap[report.status].icon
+function ReportCard({ report }: ReportCardProps) {
+  const StatusIcon = statusConfig[report.status].icon
   
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="w-full">
+      <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle className="text-xl">{report.location.name}</CardTitle>
-            <CardDescription>
-              <div className="flex items-center mt-1">
-                <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
-                {report.location.address}
-              </div>
-              <div className="flex items-center mt-1">
-                <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
-                {format(new Date(report.createdAt), 'dd/MM/yyyy HH:mm', { locale: vi })}
-              </div>
+            <CardTitle className="text-lg font-semibold">
+              {report.title}
+            </CardTitle>
+            <CardDescription className="text-sm text-gray-500">
+              {report.description}
             </CardDescription>
           </div>
-          <Badge className={`${statusMap[report.status].color} text-white`}>
+          <Badge className={`${statusConfig[report.status].color} text-white`}>
             <StatusIcon className="h-3 w-3 mr-1" />
-            {statusMap[report.status].label}
+            {statusConfig[report.status].label}
           </Badge>
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-sm text-muted-foreground">{report.description}</p>
-        {report.rejectionReason && (
-          <div className="mt-2 p-2 bg-red-50 text-red-700 rounded-md text-sm">
-            <strong>Lý do từ chối:</strong> {report.rejectionReason}
+        <div className="space-y-2">
+          <div className="flex items-center text-sm text-gray-500">
+            <MapPin className="h-4 w-4 mr-2" />
+            <span>{report.address || 'Chưa có địa chỉ'}</span>
           </div>
-        )}
+          <div className="flex items-center text-sm text-gray-500">
+            <Calendar className="h-4 w-4 mr-2" />
+            <span>
+              {new Date(report.createdAt).toLocaleDateString('vi-VN')}
+            </span>
+          </div>
+          {report.rejectionReason && (
+            <div className="flex items-center text-sm text-red-500">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              <span>{report.rejectionReason}</span>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   )

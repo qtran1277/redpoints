@@ -22,6 +22,9 @@ export type {
   RadioProps as InputRadioProps
 } from './input'
 
+export { Toggle } from './toggle'
+export type { ToggleProps } from './toggle'
+
 // Layout Components
 export { Grid as SimpleGrid } from './layout'
 export type { GridProps as SimpleGridProps } from './layout'

@@ -1,39 +1,59 @@
 import { NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import prisma from '@/lib/prisma'
 
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string; action: 'approve' | 'reject' } }
-) {
+export async function PUT(request: Request, { params }: any) {
   try {
-    // Check authentication
+    const { id, action } = params as { id: string; action: 'approve' | 'reject' }
     const session = await getServerSession(authOptions)
-    if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 })
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Check if user is moderator
-    if (session.user.role !== 'MODERATOR') {
-      return new NextResponse('Forbidden', { status: 403 })
+    const { reason } = await request.json()
+
+    const report = await prisma.report.findUnique({
+      where: { id },
+      include: {
+        user: true,
+      },
+    })
+
+    if (!report) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 })
     }
 
-    const { id, action } = params
+    if (report.status !== 'PENDING') {
+      return NextResponse.json(
+        { error: 'Report has already been processed' },
+        { status: 400 }
+      )
+    }
 
-    // Update report status
-    const report = await prisma.report.update({
+    const updatedReport = await prisma.report.update({
       where: { id },
       data: {
         status: action === 'approve' ? 'APPROVED' : 'REJECTED',
         moderatorId: session.user.id,
-        rejectionReason: action === 'reject' ? 'Báo cáo không phù hợp' : null
-      }
+        rejectionReason: reason || null,
+      },
     })
 
-    return NextResponse.json(report)
+    if (action === 'approve') {
+      // Since there's no Post model, we'll remove this part
+      // await prisma.post.update({
+      //   where: { id: report.postId },
+      //   data: { status: 'removed' },
+      // });
+    }
+
+    return NextResponse.json(updatedReport)
   } catch (error) {
-    console.error(`Error ${params.action}ing report:`, error)
-    return new NextResponse('Internal Server Error', { status: 500 })
+    console.error('Error processing report:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    )
   }
 } 

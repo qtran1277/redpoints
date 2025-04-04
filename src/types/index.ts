@@ -1,6 +1,11 @@
 export type Role = 'DRIVER' | 'MODERATOR' | 'ADMIN'
-export type ReportStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type ReportCategory = 'ACCIDENT_PRONE' | 'TRAFFIC_VIOLATION' | 'ROAD_CONDITION' | 'POLICE_CHECKPOINT' | 'OTHER'
+
+export enum ReportStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
+}
 
 export interface User {
   id: string
@@ -39,10 +44,4 @@ export interface Report {
     email: string | null
     image: string | null
   }
-}
-
-export enum ReportStatus {
-  PENDING = 'PENDING',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
 } 
