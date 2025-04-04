@@ -47,6 +47,18 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GITHUB_SECRET!,
     }),
   ],
+  debug: true,
+  logger: {
+    error(code, ...message) {
+      console.error('AUTH ERROR:', code, message)
+    },
+    warn(code, ...message) {
+      console.warn('AUTH WARN:', code, message)
+    },
+    debug(code, ...message) {
+      console.log('AUTH DEBUG:', code, message)
+    }
+  },
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -101,14 +113,25 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async signIn({ user, account }) {
-      if (!user.email) return false
+    async signIn({ user, account, profile }) {
+      console.log('=== Sign In Attempt ===')
+      console.log('User:', { email: user.email, name: user.name })
+      console.log('Account:', { provider: account?.provider, type: account?.type })
+      console.log('Profile:', profile)
+
+      if (!user.email) {
+        console.log('Sign in failed: No email provided')
+        return false
+      }
 
       const email = typeof user.email === 'string' ? user.email : undefined
-      if (!email) return false
+      if (!email) {
+        console.log('Sign in failed: Invalid email format')
+        return false
+      }
 
       try {
-        // Use transaction with timeout to ensure fast execution
+        console.log('Starting database transaction')
         const result = await prisma.$transaction(async (tx) => {
           const existingUser = await tx.user.findUnique({
             where: { email },
@@ -116,9 +139,11 @@ export const authOptions: NextAuthOptions = {
           })
 
           if (existingUser) {
+            console.log('Found existing user:', existingUser)
             return existingUser
           }
 
+          console.log('Creating new user with email:', email)
           return await tx.user.create({
             data: {
               email,
@@ -133,13 +158,19 @@ export const authOptions: NextAuthOptions = {
             }
           })
         }, {
-          maxWait: 5000, // Maximum time to wait for transaction to start
-          timeout: 5000  // Maximum time for transaction to complete
+          maxWait: 5000,
+          timeout: 5000
         })
 
-        return !result.isBlocked
+        if (result.isBlocked) {
+          console.log('Sign in blocked: User is blocked')
+          return false
+        }
+
+        console.log('Sign in successful')
+        return true
       } catch (error) {
-        console.error('Auth error:', error)
+        console.error('Database error during auth:', error)
         return false
       }
     },
