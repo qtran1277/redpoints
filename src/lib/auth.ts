@@ -101,9 +101,14 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
-    async signIn({ user }) {
+    async signIn({ user, account, profile }) {
       const startTime = Date.now()
-      log('signIn started', { email: user.email })
+      log('signIn started', { 
+        email: user.email,
+        name: user.name,
+        provider: account?.provider,
+        providerAccountId: account?.providerAccountId
+      })
 
       if (!user.email) {
         log('signIn failed: no email')
@@ -127,12 +132,23 @@ export const authOptions: NextAuthOptions = {
         })
 
         logTime(upsertStart, 'prisma.user.upsert')
-        logTime(startTime, 'signIn total')
-        log('signIn completed', { userId: result.id })
         
-        return !!result
+        if (result.isBlocked) {
+          log('signIn failed: user is blocked', { userId: result.id })
+          return false
+        }
+
+        logTime(startTime, 'signIn total')
+        log('signIn completed', { 
+          userId: result.id,
+          role: result.role,
+          isBlocked: result.isBlocked
+        })
+        
+        return true
       } catch (error) {
-        log('signIn error', { error })
+        log('signIn error', { error: error instanceof Error ? error.message : 'Unknown error' })
+        console.error('Detailed error:', error)
         return false
       }
     },
