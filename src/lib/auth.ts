@@ -48,15 +48,17 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   debug: true,
-  logger: {
-    error(code, ...message) {
-      console.error('AUTH ERROR:', code, message)
+  secret: process.env.NEXTAUTH_SECRET,
+  events: {
+    async signIn({ user, account }) {
+      console.log('=== Auth Event: Sign In ===')
+      console.log('Provider:', account?.provider)
+      console.log('User email:', user.email)
+      console.log('NEXTAUTH_URL:', process.env.NEXTAUTH_URL)
     },
-    warn(code, ...message) {
-      console.warn('AUTH WARN:', code, message)
-    },
-    debug(code, ...message) {
-      console.log('AUTH DEBUG:', code, message)
+    async signOut({ session }) {
+      console.log('=== Auth Event: Sign Out ===')
+      console.log('User email:', session?.user?.email)
     }
   },
   session: {
@@ -65,12 +67,12 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     sessionToken: {
-      name: `__Secure-next-auth.session-token`,
+      name: 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: true
+        secure: process.env.NODE_ENV === 'production'
       }
     },
     callbackUrl: {
@@ -113,6 +115,42 @@ export const authOptions: NextAuthOptions = {
     },
   },
   callbacks: {
+    async jwt({ token, user, account }) {
+      if (account && user) {
+        return {
+          ...token,
+          accessToken: account.access_token,
+          userId: user.id,
+        }
+      }
+      return token
+    },
+    async session({ session, token }) {
+      if (!session.user?.email) return session
+
+      try {
+        const user = await prisma.user.findUnique({
+          where: { email: session.user.email },
+          select: { 
+            id: true, 
+            role: true, 
+            points: true, 
+            isBlocked: true 
+          }
+        })
+        
+        if (user) {
+          session.user.id = user.id
+          session.user.role = user.role
+          session.user.points = user.points
+          session.user.isBlocked = user.isBlocked
+        }
+      } catch (error) {
+        console.error('Session error:', error)
+      }
+
+      return session
+    },
     async signIn({ user, account, profile }) {
       console.log('=== Sign In Attempt ===')
       console.log('User:', { email: user.email, name: user.name })
@@ -173,37 +211,10 @@ export const authOptions: NextAuthOptions = {
         console.error('Database error during auth:', error)
         return false
       }
-    },
-    async session({ session, token }) {
-      if (!session.user?.email) return session
-
-      try {
-        const user = await prisma.user.findUnique({
-          where: { email: session.user.email },
-          select: { 
-            id: true, 
-            role: true, 
-            points: true, 
-            isBlocked: true 
-          }
-        })
-        
-        if (user) {
-          session.user.id = user.id
-          session.user.role = user.role
-          session.user.points = user.points
-          session.user.isBlocked = user.isBlocked
-        }
-      } catch (error) {
-        console.error('Session error:', error)
-      }
-
-      return session
     }
   },
   pages: {
     signIn: '/auth/signin',
     error: '/auth/signin'
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+  }
 } 
