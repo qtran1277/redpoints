@@ -1,20 +1,28 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 
 export async function GET() {
   try {
-    console.log('Fetching report types from database...')
+    // Check authentication
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return new NextResponse('Unauthorized', { status: 401 })
+    }
+
+    // Fetch all report types
     const reportTypes = await prisma.reportType.findMany({
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        description: true
+      },
       orderBy: {
         name: 'asc'
       }
     })
-
-    console.log('Found report types:', JSON.stringify(reportTypes, null, 2))
-
-    if (!reportTypes || reportTypes.length === 0) {
-      console.log('No report types found in database')
-    }
 
     return NextResponse.json(reportTypes)
   } catch (error) {

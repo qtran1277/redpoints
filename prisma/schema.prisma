@@ -50,6 +50,7 @@ model User {
   sessions       Session[]
   reports        Report[]  @relation("UserReports")
   moderatedReports Report[] @relation("ModeratedReports")
+  externalId     String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

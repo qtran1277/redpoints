@@ -48,7 +48,7 @@ export const authOptions: NextAuthOptions = {
   ],
   secret: process.env.NEXTAUTH_SECRET,
   session: {
-    strategy: 'database',
+    strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   cookies: {
@@ -108,43 +108,10 @@ export const authOptions: NextAuthOptions = {
           log('New user created successfully', { userId: dbUser.id })
         }
 
-        // Link the Google account
-        if (account?.provider === 'google') {
-          log('Linking Google account')
-          try {
-            await prisma.account.upsert({
-              where: {
-                provider_providerAccountId: {
-                  provider: account.provider,
-                  providerAccountId: account.providerAccountId,
-                }
-              },
-              create: {
-                userId: dbUser.id,
-                type: account.type,
-                provider: account.provider,
-                providerAccountId: account.providerAccountId,
-                access_token: account.access_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
-              },
-              update: {
-                access_token: account.access_token,
-                expires_at: account.expires_at,
-                token_type: account.token_type,
-                scope: account.scope,
-                id_token: account.id_token,
-              }
-            })
-            log('Google account linked successfully')
-            return true
-          } catch (error) {
-            log('Error linking Google account', { error })
-            return false
-          }
-        }
+        // Store user role in the user object
+        user.role = dbUser.role
+        user.id = dbUser.id
+        user.points = dbUser.points
 
         return true
       } catch (error) {
@@ -158,32 +125,25 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.email = user.email
+        token.role = user.role
+        token.points = user.points
       }
       
-      if (account) {
-        token.accessToken = account.access_token
-      }
-
       return token
     },
     async session({ session, token }) {
       log('Session Callback', { sessionUser: session.user, token })
 
-      if (token?.id && token?.email) {
-        try {
-          const user = await prisma.user.findUnique({
-            where: { email: token.email }
-          })
-
-          if (user) {
-            session.user.id = user.id
-            session.user.role = user.role
-            session.user.points = user.points
-            log('Session updated with user data', { userId: user.id, role: user.role })
-          }
-        } catch (error) {
-          log('Error in session callback', { error })
-        }
+      if (token) {
+        session.user.id = token.id as string
+        session.user.email = token.email as string
+        session.user.role = token.role as Role
+        session.user.points = token.points as number
+        log('Session updated with user data', { 
+          userId: session.user.id, 
+          role: session.user.role,
+          email: session.user.email 
+        })
       }
 
       return session

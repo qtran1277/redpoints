@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/auth-options'
+import { authOptions } from '@/lib/auth'
 import prisma from '@/lib/prisma'
 import { ReportCategory } from '@prisma/client'
 
@@ -163,32 +163,30 @@ async function getAddressFromCoordinates(longitude: number, latitude: number) {
 
 export async function GET() {
   try {
+    // Check authentication
     const session = await getServerSession(authOptions)
-    if (!session?.user?.email) {
-      console.log('No session or email')
+    if (!session) {
       return new NextResponse('Unauthorized', { status: 401 })
     }
 
-    console.log('Session email:', session.user.email)
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email }
-    })
-
-    if (!user) {
-      console.log('User not found for email:', session.user.email)
-      return new NextResponse('User not found', { status: 404 })
+    // Check if user is moderator
+    if (session.user.role !== 'MODERATOR') {
+      return new NextResponse('Forbidden', { status: 403 })
     }
 
-    console.log('Found user:', { id: user.id, email: user.email, role: user.role })
-
+    // Fetch all reports
     const reports = await prisma.report.findMany({
-      where: {
-        userId: user.id
-      },
       include: {
+        reportType: {
+          select: {
+            id: true,
+            name: true,
+            icon: true
+          }
+        },
         user: {
           select: {
+            id: true,
             name: true,
             email: true
           }
@@ -199,11 +197,9 @@ export async function GET() {
       }
     })
 
-    console.log('Found reports:', JSON.stringify(reports, null, 2))
-
     return NextResponse.json(reports)
   } catch (error) {
-    console.error('Error in GET /api/reports:', error)
+    console.error('Error fetching reports:', error)
     return new NextResponse('Internal Server Error', { status: 500 })
   }
 }

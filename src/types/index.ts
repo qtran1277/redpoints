@@ -23,12 +23,26 @@ export interface Report {
   district?: string | null
   images: string[]
   status: ReportStatus
-  category: ReportCategory
-  createdAt: Date
-  updatedAt: Date
+  createdAt: string
+  updatedAt: string
   userId: string
   moderatorId?: string | null
   rejectionReason?: string | null
-  user: User
-  moderator?: User | null
+  reportTypeId: string
+  reportType?: {
+    id: string
+    name: string
+    icon: string | null
+  }
+  user?: {
+    name: string | null
+    email: string | null
+    image: string | null
+  }
+}
+
+export enum ReportStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
 } 

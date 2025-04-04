@@ -49,7 +49,7 @@ export default function NavBar() {
                 )}
                 {session.user?.role === 'MODERATOR' && (
                   <li className="nav-item">
-                    <Link href="/moderator" className="nav-link">
+                    <Link href="/dashboard/moderator" className="nav-link">
                       Kiểm duyệt
                     </Link>
                   </li>
@@ -69,6 +69,12 @@ export default function NavBar() {
                     aria-expanded="false"
                   >
                     {session.user?.name || session.user?.email}
+                    {session.user?.role === 'MODERATOR' && (
+                      <span className="badge bg-success ms-2">Moderator</span>
+                    )}
+                    {session.user?.role === 'ADMIN' && (
+                      <span className="badge bg-danger ms-2">Admin</span>
+                    )}
                   </a>
                   <ul className="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdown">
                     <li>
