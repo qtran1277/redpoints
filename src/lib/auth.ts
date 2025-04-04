@@ -104,30 +104,40 @@ export const authOptions: NextAuthOptions = {
     async signIn({ user, account }) {
       if (!user.email) return false
 
+      const email = typeof user.email === 'string' ? user.email : undefined
+      if (!email) return false
+
       try {
+        // Use transaction with timeout to ensure fast execution
         const result = await prisma.$transaction(async (tx) => {
-          return await tx.user.upsert({
-            where: { email: user.email },
-            update: {},
-            create: {
-              email: user.email,
-              name: user.name || '',
+          const existingUser = await tx.user.findUnique({
+            where: { email },
+            select: { id: true, isBlocked: true }
+          })
+
+          if (existingUser) {
+            return existingUser
+          }
+
+          return await tx.user.create({
+            data: {
+              email,
+              name: typeof user.name === 'string' ? user.name : undefined,
               role: Role.DRIVER,
               points: 0,
               isBlocked: false
             },
             select: {
               id: true,
-              isBlocked: true,
-              role: true
+              isBlocked: true
             }
           })
         }, {
-          timeout: 5000 // 5 second timeout
+          maxWait: 5000, // Maximum time to wait for transaction to start
+          timeout: 5000  // Maximum time for transaction to complete
         })
-        
-        if (result.isBlocked) return false
-        return true
+
+        return !result.isBlocked
       } catch (error) {
         console.error('Auth error:', error)
         return false
